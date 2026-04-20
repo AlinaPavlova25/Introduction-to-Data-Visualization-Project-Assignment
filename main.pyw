@@ -44,6 +44,7 @@ HATA_SOZLUKLERI = {
     "python": {
         "SyntaxError": "Yazım hatası",
         "IndentationError": "Boşluk/indent hatası",
+        "TabError": "Tab ve boşluk karışmış",
         "NameError": "Tanımlanmamış değişken/fonksiyon",
         "TypeError": "Tip uyuşmazlığı",
         "ValueError": "Geçersiz değer",
@@ -54,7 +55,21 @@ HATA_SOZLUKLERI = {
         "ModuleNotFoundError": "Modül bulunamadı",
         "ZeroDivisionError": "Sıfıra bölme hatası",
         "FileNotFoundError": "Dosya bulunamadı",
+        "PermissionError": "Dosya/kaynak için yetki yok",
+        "IsADirectoryError": "Dosya yerine klasör verilmiş",
+        "NotADirectoryError": "Klasör yerine dosya verilmiş",
         "KeyboardInterrupt": "Program kullanıcı tarafından durduruldu",
+        "RecursionError": "Çok fazla iç içe fonksiyon çağrısı (özyineleme sınırı aşıldı)",
+        "AssertionError": "assert ifadesi başarısız oldu",
+        "UnicodeDecodeError": "Metin kodlaması (encoding) uyuşmazlığı",
+        "UnicodeEncodeError": "Metin kodlaması (encoding) uyuşmazlığı",
+        "OverflowError": "Sayı çok büyük, taşma oldu",
+        "StopIteration": "Iterator bitti",
+        "RuntimeError": "Çalışma zamanı hatası",
+        "ArithmeticError": "Aritmetik hata",
+        "LookupError": "Arama hatası (index/key)",
+        "ConnectionError": "Ağ bağlantı hatası",
+        "TimeoutError": "İşlem zaman aşımına uğradı",
     },
     "javascript": {
         "SyntaxError": "Yazım hatası",
@@ -294,6 +309,69 @@ def hata_parser_basit(hata_metni, dil_kodu):
                 'aciklama': aciklama
             })
     
+    # Python traceback formatini ayrica dene (farkli bir format)
+    if not sonuclar and dil_kodu == "python":
+        sonuclar = python_traceback_parser(hata_metni)
+
+    return sonuclar
+
+
+def python_traceback_parser(hata_metni):
+    """
+    Python traceback formatini parse eder.
+    Ornek:
+        Traceback (most recent call last):
+          File "app.py", line 12, in foo
+            x = 1/0
+        ZeroDivisionError: division by zero
+    Cagri yigitinin en ic frame'i + son hata tipi+mesaj dondurulur.
+    """
+    sonuclar = []
+
+    # Tum "File ..., line N, in ..." satirlarini topla (en son = hatanin oldugu yer)
+    frame_pattern = r'File "([^"]+)", line (\d+)(?:, in (\S+))?'
+    frames = re.findall(frame_pattern, hata_metni)
+
+    # Son satirda "ErrorTipi: mesaj" formatini bul
+    # Birden fazla satira yayilmis mesajlari da tolere et (son eslesen yeterli)
+    hata_tipi_pattern = r'^([A-Z]\w*(?:Error|Exception|Warning|Interrupt)):\s*(.*)$'
+    hata_tipi = None
+    hata_mesaji = ""
+    for satir in reversed(hata_metni.splitlines()):
+        m = re.match(hata_tipi_pattern, satir.strip())
+        if m:
+            hata_tipi, hata_mesaji = m.group(1), m.group(2).strip()
+            break
+
+    # Hicbir sinyal yoksa bos don
+    if not frames and not hata_tipi:
+        return sonuclar
+
+    # Varsayilan: son frame (hatanin gercek yeri)
+    if frames:
+        dosya, satir_no, fonk = frames[-1]
+    else:
+        dosya, satir_no, fonk = "?", "?", ""
+
+    aciklama = hata_aciklama_bul(hata_tipi or "", hata_mesaji, "python")
+    if aciklama == "Sözdizimi hatası" and hata_tipi:
+        # Sozlukte yoksa en azindan hata tipini goster
+        aciklama = f"{hata_tipi}: {hata_mesaji}" if hata_mesaji else hata_tipi
+
+    sonuclar.append({
+        'dosya': dosya,
+        'satir': satir_no,
+        'kolon': '-',
+        'hata_kodu': hata_tipi or "Traceback",
+        'mesaj': hata_mesaji,
+        'aciklama': aciklama,
+    })
+
+    # Eger cagri yigini derinse kullaniciya ek bilgi ver
+    if len(frames) > 1:
+        dosya_zinciri = " -> ".join(f"{d}:{s}" for d, s, _ in frames)
+        sonuclar[0]['cagri_yigini'] = dosya_zinciri
+
     return sonuclar
 
 
@@ -556,7 +634,12 @@ def hata_analiz_et(secili_metin, dil_kodu, kullan_cloud=False):
             cikti += f"🔴 HATA #{i}\n"
             cikti += f"📍 {hata['dosya']} - Satır {hata['satir']}\n"
             cikti += f"❌ {hata['aciklama']}\n"
-            cikti += f"💻 Kod: {hata['hata_kodu']}\n\n"
+            cikti += f"💻 Kod: {hata['hata_kodu']}\n"
+            if hata.get('mesaj'):
+                cikti += f"💬 Mesaj: {hata['mesaj']}\n"
+            if hata.get('cagri_yigini'):
+                cikti += f"🧭 Çağrı yığını: {hata['cagri_yigini']}\n"
+            cikti += "\n"
     
         cikti += "\n💡 İpucu: Belirtilen satırları kontrol edin."
     

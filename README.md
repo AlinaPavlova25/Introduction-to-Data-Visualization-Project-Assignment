@@ -226,6 +226,40 @@ Kütüphane dedektörü eşleşmez → **syntax parser** devreye girer:
 💡 İpucu: Belirtilen satırları kontrol edin.
 ```
 
+### Örnek 8 — Python Traceback (çağrı yığınlı)
+
+**Seçilen hata metni:**
+```
+Traceback (most recent call last):
+  File "main.py", line 10, in <module>
+    run()
+  File "main.py", line 7, in run
+    process(data)
+  File "utils.py", line 22, in process
+    return d['eksik_anahtar']
+KeyError: 'eksik_anahtar'
+```
+
+Kütüphane dedektörü eşleşmez → **`python_traceback_parser`** devreye girer:
+
+```
+🌐 Dil: Python
+📊 1 hata bulundu
+
+🔴 HATA #1
+📍 utils.py - Satır 22
+❌ Sözlükte anahtar bulunamadı
+💻 Kod: KeyError
+💬 Mesaj: 'eksik_anahtar'
+🧭 Çağrı yığını: main.py:10 -> main.py:7 -> utils.py:22
+
+💡 İpucu: Belirtilen satırları kontrol edin.
+```
+
+Parser, yığındaki **en iç frame**'i (hatanın gerçek olduğu yer) ana konum
+olarak alır, tüm zinciri "çağrı yığını" satırında gösterir. Sözlükte
+olmayan custom hata tipleri için hata tipi + mesaj çıktıya aktarılır.
+
 ---
 
 ## 2. Proje Akış Şeması (Mermaid Flowchart)
