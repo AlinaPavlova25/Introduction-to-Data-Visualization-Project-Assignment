@@ -1,199 +1,235 @@
-# AI Asistan - Metin İşleme ve Kod Hata Analizi
+# AI Asistan — Metin İşleme & Kod Hata / Kütüphane Çakışması Analizi
 
-Windows için sistem çapında çalışan AI destekli metin işleme ve kod hata analizi aracı.
+Windows için sistem çapında çalışan AI destekli metin işleme, kod hata ayıklama ve
+**kütüphane sürüm çakışması / eksik paket raporlama** aracı.
 
-## Özellikler
+> Bu sürümün odak noktası: derleyici/çalışma zamanı hatalarının yanında **kritik
+> bağımlılık hatalarını** (eksik modül, sürüm çakışması, peer dependency çakışması,
+> NuGet/Maven/Gradle sorunları) tespit edip kullanıcıya **"silip tekrar yükle"**
+> tarzı, adım adım, gerekçeli çözüm raporu üretmek.
 
-### 1. Metin İşleme (F8 / F9)
-Seçili metin üzerinde çeşitli AI işlemleri:
+---
+
+## 1. Özellikler
+
+### 1.1 Metin İşleme (F8 / F9)
+Seçili metin üzerinde AI işlemleri:
+
 - 📝 Gramer Düzelt
-- 🇬🇧 İngilizceye Çevir  
+- 🇬🇧 İngilizceye Çevir
 - 🇹🇷 Türkçeye Çevir
 - 📑 Özetle (Madde Madde)
 - 💼 Daha Resmi Yap
 - 🐍 Python Koduna Çevir
 - 📧 Cevap Yaz (Mail)
 - 🎮 PS5 Oyun Skor + Acımasız Yorum
-- 🐞 **Kod Hatasını Açıkla** (Yeni!)
+- 🐞 **Kod Hatasını Açıkla** → dil seçimi + kütüphane/çakışma analizi akışına yönlenir
 
-**Kısayollar:**
-- `F8` - Lokal Ollama AI ile işlem
-- `F9` - Google Cloud Gemini AI ile işlem
+**Kısayollar**
 
-### 2. Kod Hata Analizi (F10) - YENİ!
+| Tuş | İşlev |
+|-----|-------|
+| `F8` | Lokal Ollama AI menüsü (Kod Hatasını Açıkla seçilirse analiz akışına gider) |
+| `F9` | Google Cloud Gemini AI menüsü (aynı yönlendirme) |
+| `F10` | Doğrudan kod/kütüphane hata analizi akışı |
 
-Derleme hatalarını anında Türkçe olarak açıklar. AI bekleme süresi olmadan, regex tabanlı parser ile çalışır.
+### 1.2 Kod Hata & Kütüphane Çakışması Analizi
 
-**Desteklenen Diller:**
-- 🐍 Python
-- 📜 JavaScript
-- 🔷 TypeScript
-- ☕ Java
-- 🔷 C#
-- 🔧 C/C++
-- 🌐 HTML/CSS
-- 🐘 PHP
-- 🦀 Rust
-- 🎯 Go
+Seçili hata metni önce **regex tabanlı yerel parser**'dan geçer:
 
-**Kullanım:**
-1. VS Code veya herhangi bir editörde hata mesajını seçin
-2. `F10` tuşuna basın
-3. Programlama dilini seçin
-4. Hata anında analiz edilir ve Türkçe açıklama gösterilir
+1. **Önce** kritik kütüphane/bağımlılık hatası var mı kontrol edilir
+   (eksik modül, sürüm çakışması, peer dependency, NuGet/Maven/Gradle).
+2. Varsa → **detaylı "silip tekrar yükle" raporu** üretilir (AI beklemeden).
+3. Yoksa → klasik derleyici hata satırları parse edilir (örn. `CS1525`, satır numarası).
 
-**Örnek Çıktı:**
+**Desteklenen diller:** Python, JavaScript, TypeScript, Java, C#, C/C++, HTML/CSS,
+PHP, Rust, Go.
+
+**Örnek — Eksik Python paketi:**
+
 ```
-🌐 Dil: C#
-📊 2 hata bulundu
+⚠️ EKSİK / UYUMSUZ KÜTÜPHANE TESPİT EDİLDİ (Python)
+============================================================
 
-🔴 HATA #1
-📍 main.cs - Satır 18
-❌ Noktalı virgül (;) eksik veya yanlış yerde
-💻 Kod: CS1525
+📋 SORUN:
+'pandas' kütüphanesi sistemde kurulu değil, yanlış sanal ortamda
+aranıyor ya da farklı bir Python sürümüne kurulmuş olabilir...
 
-🔴 HATA #2
-📍 main.cs - Satır 33
-❌ Satır sonunda noktalı virgül (;) eksik
-💻 Kod: CS1002
+🔍 HATANIN OLASI KAYNAKLARI:
+  1) Kütüphane hiç kurulmadı (pip install unutuldu).
+  2) Sanal ortam (venv) aktif edilmeden program çalıştırıldı...
+  3) Eski bir sürüm kuruldu; import yolu değişmiş olabilir...
+  4) Başka bir kütüphaneyle sürüm çakışması var...
 
-💡 İpucu: Belirtilen satırları kontrol edin.
+🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE' YÖNTEMİ:
+  1. .venv\Scripts\activate
+  2. pip uninstall pandas -y
+  3. pip cache purge
+  4. pip install pandas --upgrade --no-cache-dir
+
+🔁 ALTERNATİF ÇÖZÜMLER:
+  - Tüm bağımlılıkları sıfırla ...
+  - Sanal ortamı komple baştan kur ...
 ```
 
-## Kurulum
+---
+
+## 2. Proje Akış Şeması (Mermaid Flowchart)
+
+```mermaid
+flowchart TD
+    A[Kullanıcı editörde hata metnini seçer] --> B{Hangi kısayol?}
+    B -- F8 --> C[Ollama Lokal menüsü]
+    B -- F9 --> D[Gemini Cloud menüsü]
+    B -- F10 --> E[Doğrudan hata analiz akışı]
+
+    C --> F{Menüden seçim}
+    D --> F
+    F -- 'Kod Hatasını Açıkla' --> E
+    F -- Diğer işlemler\n(gramer, çeviri, özet...) --> G[AI'a prompt gönder\nOllama / Gemini]
+    G --> H[Sonucu panoya yaz + Ctrl+V]
+
+    E --> I[Dil seçim menüsü\nPython / JS / C# / Java ...]
+    I --> J[hata_parser_basit çağrılır]
+    J --> K{kutuphane_cakismasi_analiz\nkritik hata buldu mu?}
+
+    K -- Evet --> L[📦 Kütüphane / Sürüm Çakışması Raporu\n- Sorun\n- Olası kaynaklar\n- Silip tekrar yükle komutları\n- Alternatif çözümler]
+    K -- Hayır --> M[Regex ile derleyici hataları parse\nCS1525, satır, dosya...]
+
+    M --> N{Hata bulundu mu?}
+    N -- Evet --> O[Hata kodu → Türkçe açıklama\nsözlükten eşleştirme]
+    N -- Hayır --> P[⚠️ 'Format tanınamadı' bilgisi]
+
+    L --> Q[Sonuç penceresi\nToplevel + panoya kopyala]
+    O --> Q
+    P --> Q
+    H --> R([Son])
+    Q --> R
+```
+
+---
+
+## 3. Kurulum
 
 ### Gereksinimler
 - Windows 10/11
 - Python 3.12+
-- Ollama (lokal AI için)
-- Google Cloud hesabı (opsiyonel, Gemini için)
+- Ollama (lokal AI için) — https://ollama.com/download
+- Google Cloud hesabı (opsiyonel, F9 için)
 
 ### Adımlar
 
-1. **Ollama'yı kurun:**
-   ```powershell
-   # https://ollama.com/download adresinden indirin
-   # Kurulumdan sonra:
-   ollama pull qwen2.5:0.5b
-   ```
+```powershell
+# 1) Ollama modelini indir
+ollama pull qwen2.5:0.5b
 
-2. **Projeyi klonlayın:**
-   ```powershell
-   git clone https://github.com/kullaniciadi/proje-adi.git
-   cd proje-adi
-   ```
+# 2) Projeyi klonla
+git clone https://github.com/AlinaPavlova25/Introduction-to-Data-Visualization-Project-Assignment.git
+cd Introduction-to-Data-Visualization-Project-Assignment
 
-3. **BASLAT.bat çalıştırın:**
-   ```powershell
-   .\BASLAT.bat
-   ```
-   
-   Bu komut otomatik olarak:
-   - Python sanal ortamı (.venv) oluşturur
-   - Gerekli paketleri kurar
-   - Uygulamayı arka planda başlatır
+# 3) Başlat
+.\BASLAT.bat
+```
 
-### Google Cloud Gemini (Opsiyonel)
+`BASLAT.bat` otomatik olarak:
+- `.venv` sanal ortamı oluşturur
+- `requirements.txt` paketlerini kurar
+- `main.pyw` uygulamasını arka planda başlatır
 
-F9 kısayolu ile Gemini kullanmak için:
+### Google Cloud Gemini (Opsiyonel, F9 için)
 
 ```powershell
-# gcloud CLI kurulumu
-# https://cloud.google.com/sdk/docs/install
-
-# Kimlik doğrulama
 gcloud auth application-default login
-
-# Ortam değişkenleri
 $env:GOOGLE_CLOUD_PROJECT="proje-id"
 $env:GOOGLE_CLOUD_LOCATION="global"
 $env:GOOGLE_GENAI_USE_VERTEXAI="True"
 ```
 
-## Proje Yapısı
+---
+
+## 4. Proje Yapısı
 
 ```
 .
-├── main.pyw              # Ana uygulama
-├── BASLAT.bat            # Başlatma scripti
+├── main.pyw              # Ana uygulama (kısayol dinleyici + GUI + analiz)
+├── BASLAT.bat            # Sanal ortam kur + çalıştır
 ├── kurulum.bat           # Kurulum scripti
 ├── requirements.txt      # Python bağımlılıkları
-└── README.md            # Bu dosya
+└── README.md             # Bu dosya
 ```
 
-## Teknik Detaylar
+---
 
-### Hata Analizi Sistemi
+## 5. Teknik Detaylar
 
-F10 ile çalışan hata analizi, AI yerine **regex tabanlı parser** kullanır:
+### 5.1 Kütüphane Çakışması / Eksik Paket Dedektörü
 
-- **Hız:** Anında sonuç (AI bekleme süresi yok)
-- **Doğruluk:** Hata kodu eşleştirme (CS1525 → "Noktalı virgül eksik")
-- **Dil Desteği:** C#, Python, JS/TS, Java, C++ için özel hata sözlükleri
+`kutuphane_cakismasi_analiz()` fonksiyonu seçili hata metnini tarar ve
+aşağıdaki kalıpları arar:
 
-**Parser Mantığı:**
-```python
-# main.cs(18,8): error CS1525: Unexpected symbol `Console'
-# ↓ parse ↓
-# dosya: main.cs, satır: 18, hata_kodu: CS1525
-# ↓ sözlük lookup ↓  
-# "Noktalı virgül (;) eksik veya yanlış yerde"
+| Dil / Ekosistem | Tespit edilen durumlar |
+|-----------------|------------------------|
+| Python / pip    | `ModuleNotFoundError`, `ImportError`, `ResolutionImpossible`, `incompatible`, `version conflict` |
+| JS / TS (npm)   | `ERESOLVE`, `peer dependency`, `conflict`, `Cannot find module`, `Module not found` |
+| C# (NuGet)      | `NuGet`, `package restore`, `unable to find` |
+| Java            | `Maven`, `Gradle`, `dependency` |
+
+Eşleşme olursa `hata_parser_basit()` doğrudan bu **detaylı raporu** döndürür
+ve klasik syntax parsing'e girmez.
+
+### 5.2 Derleyici Hata Parser'ı
+
+Kütüphane hatası yoksa şu kalıp yakalanır:
+
+```
+dosya.cs(18,8): error CS1525: Unexpected symbol `Console'
 ```
 
-### AI Modelleri
+→ `dosya`, `satır`, `kolon`, `hata_kodu`, `mesaj` ayrıştırılır → `HATA_SOZLUKLERI`
+üzerinden Türkçe açıklama aranır (örn. `CS1525` → "Noktalı virgül eksik veya
+yanlış yerde").
 
-| Model | Kullanım | Hız |
-|-------|----------|-----|
-| `qwen2.5:0.5b` | Lokal (F8) | ~15 sn |
-| `gemini-3-flash-preview` | Cloud (F9) | ~3 sn |
+### 5.3 AI Modelleri
 
-## Kullanılan Teknolojiler
+| Model                       | Kullanım    | Yaklaşık süre (CPU) |
+|-----------------------------|-------------|---------------------|
+| `qwen2.5:0.5b`              | Lokal (F8)  | ~15 sn              |
+| `gemini-3-flash-preview`    | Cloud (F9)  | ~3 sn               |
 
-- **Python 3.12** - Ana dil
-- **Tkinter** - GUI menüleri
-- **pynput** - Global kısayol dinleyici
-- **pyautogui** - Klavye/mouse simülasyonu
-- **requests** - Ollama API iletişimi
-- **google-genai** - Gemini API (opsiyonel)
+---
 
-## Lisans
+## 6. Kullanılan Teknolojiler
 
-MIT License
+- **Python 3.12** — ana dil
+- **Tkinter** — GUI (menü + sonuç pencereleri)
+- **pynput** — global kısayol dinleyici (F8/F9/F10)
+- **pyautogui** — klavye/mouse simülasyonu (seçim kopyalama, yapıştırma)
+- **pyperclip** — pano erişimi
+- **requests** — Ollama API streaming
+- **google-genai** — Vertex AI / Gemini (opsiyonel)
 
-## Katkıda Bulunma
+---
 
-1. Fork yapın
-2. Feature branch oluşturun (`git checkout -b feature/yeni-ozellik`)
-3. Değişikliklerinizi commit edin (`git commit -am 'Yeni özellik eklendi'`)
-4. Branch'inizi push edin (`git push origin feature/yeni-ozellik`)
-5. Pull Request açın
-
-## Sorun Giderme
+## 7. Sorun Giderme
 
 ### Ollama bağlanamıyor
 ```powershell
-# Ollama servisinin çalıştığından emin olun
 ollama serve
-
-# Modelin indirildiğini kontrol edin
 ollama list
 ```
 
-### Google Cloud 403 hatası
-- Billing hesabının aktif olduğundan emin olun
-- Vertex AI API'nin etkinleştirildiğini kontrol edin
-- IAM rolü: `roles/aiplatform.user`
+### Google Cloud 403
+- Billing aktif mi?
+- Vertex AI API etkin mi? (`aiplatform.googleapis.com`)
+- IAM rolü `roles/aiplatform.user` verildi mi?
 
-### F10 çalışmıyor
-- Uygulamanın arka planda çalıştığını kontrol edin
-- Başka bir uygulama F10'u kullanıyor olabilir
-- Uygulamayı yeniden başlatın
+### Kısayol çalışmıyor
+- Uygulamanın arka planda çalıştığını doğrulayın (Görev Yöneticisi → `python.exe`)
+- Başka bir uygulama F8/F9/F10 tuşunu yakalıyor olabilir
+- BASLAT.bat'ı yeniden çalıştırın
 
-## Yazar
+---
 
-- GitHub: [@kullaniciadi](https://github.com/kullaniciadi)
+## 8. Lisans
 
-## Teşekkürler
-
-- [Ollama](https://ollama.com/) - Lokal LLM çalıştırma
-- [Google Gemini](https://deepmind.google/technologies/gemini/) - Cloud AI
+MIT License

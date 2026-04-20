@@ -327,41 +327,76 @@ def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
             modul_adi = modul_match.group(1) if modul_match else "[modül_adı]"
             
             return (
-                f"⚠️ EKSİK KÜTÜPHANE TESPİT EDİLDİ\n"
-                f"{'='*50}\n\n"
+                f"⚠️ EKSİK / UYUMSUZ KÜTÜPHANE TESPİT EDİLDİ (Python)\n"
+                f"{'='*60}\n\n"
                 f"📋 SORUN:\n"
-                f"'{modul_adi}' kütüphanesi sistemde kurulu değil veya Python tarafından bulunamıyor.\n\n"
-                f"🔍 HATANIN KAYNAĞI:\n"
-                f"Kodunuzda `import {modul_adi}` veya `from {modul_adi} import ...` şeklinde\n"
-                f"bir kullanım var ancak bu kütüphane sanal ortamınızda (venv) yok.\n\n"
-                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
-                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
-                f"1. pip uninstall {modul_adi} -y\n"
-                f"2. pip install {modul_adi} --upgrade\n\n"
+                f"'{modul_adi}' kütüphanesi sistemde kurulu değil, yanlış sanal ortamda\n"
+                f"aranıyor ya da farklı bir Python sürümüne kurulmuş olabilir. Program\n"
+                f"çalışırken `import {modul_adi}` satırında durdu.\n\n"
+                f"🔍 HATANIN OLASI KAYNAKLARI:\n"
+                f"  1) Kütüphane hiç kurulmadı (pip install unutuldu).\n"
+                f"  2) Sanal ortam (venv) aktif edilmeden program çalıştırıldı, bu yüzden\n"
+                f"     global Python yorumlayıcısı kullanılıyor ve kütüphane orada yok.\n"
+                f"  3) Kütüphanenin eski bir sürümü kuruldu; import yolu değişmiş olabilir\n"
+                f"     (örn. eski 'sklearn' -> yeni 'scikit-learn').\n"
+                f"  4) Başka bir kütüphaneyle sürüm çakışması var; pip sessizce eski bir\n"
+                f"     sürüm bırakmış olabilir.\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE' YÖNTEMİ:\n"
+                f"Terminalde (PowerShell) sırayla çalıştırın:\n\n"
+                f"  1. .venv\\Scripts\\activate          # sanal ortamı aktif et\n"
+                f"  2. pip uninstall {modul_adi} -y\n"
+                f"  3. pip cache purge                    # bozuk önbelleği temizle\n"
+                f"  4. pip install {modul_adi} --upgrade --no-cache-dir\n\n"
+                f"🔁 ALTERNATİF ÇÖZÜMLER:\n"
+                f"  - Tüm bağımlılıkları sıfırla:\n"
+                f"      pip freeze > eski_paketler.txt\n"
+                f"      pip uninstall -r eski_paketler.txt -y\n"
+                f"      pip install -r requirements.txt\n"
+                f"  - Sanal ortamı komple baştan kur:\n"
+                f"      rmdir /s /q .venv\n"
+                f"      python -m venv .venv\n"
+                f"      .venv\\Scripts\\activate\n"
+                f"      pip install -r requirements.txt\n\n"
                 f"💡 EK NOT:\n"
-                f"Eğer sanal ortam (venv) kullanıyorsanız, önce ortamı aktif edin:\n"
-                f"   .venv\\Scripts\\activate"
+                f"  - Hangi Python'un kullanıldığını doğrulayın:  where python\n"
+                f"  - Kütüphanenin kurulu olup olmadığını kontrol:  pip show {modul_adi}"
             )
         
         # Sürüm çakışması - pip dependency resolver
-        if "resolutionimpossible" in metin_lower or "cannot install" in metin_lower or "incompatible" in metin_lower:
+        if "resolutionimpossible" in metin_lower or "cannot install" in metin_lower or "incompatible" in metin_lower or "version conflict" in metin_lower:
             return (
-                f"⚠️ KÜTÜPHANE SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ\n"
-                f"{'='*50}\n\n"
+                f"⚠️ KÜTÜPHANE SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ (Python / pip)\n"
+                f"{'='*60}\n\n"
                 f"📋 SORUN:\n"
-                f"Projedeki kütüphanelerin sürümleri birbiriyle uyumsuz.\n\n"
-                f"🔍 HATANIN KAYNAĞI:\n"
-                f"Bazı paketler belirli sürüm aralıklarında çalışırken, diğerleri\n"
-                f"farklı sürümler gerektiriyor. pip çözümleyici bu çakışmayı çözemiyor.\n\n"
-                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
-                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
-                f"1. pip freeze > requirements_backup.txt\n"
-                f"2. pip uninstall -r requirements.txt -y\n"
-                f"3. pip cache purge\n"
-                f"4. pip install -r requirements.txt\n\n"
+                f"Projede kullanılan paketlerin birbirinden istediği sürümler çelişiyor.\n"
+                f"pip, tüm koşulları aynı anda karşılayan bir sürüm kümesi bulamıyor ve\n"
+                f"kurulum yarıda kalıyor.\n\n"
+                f"🔍 HATANIN OLASI KAYNAKLARI:\n"
+                f"  1) requirements.txt içinde eski bir paket, yeni bir paketin güncel\n"
+                f"     sürümüyle uyumsuz (ör. numpy<1.20 iken pandas>=2.0 isteniyor).\n"
+                f"  2) Global ortama daha önce kurulmuş eski sürümler takılıyor.\n"
+                f"  3) pip'in kendi sürümü çok eski; yeni çözümleyiciyi kullanmıyor.\n"
+                f"  4) İki bağımlılık aynı alt-paketin farklı sürümlerini zorluyor\n"
+                f"     (transitive dependency conflict).\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE' YÖNTEMİ:\n"
+                f"  1. python -m pip install --upgrade pip\n"
+                f"  2. pip freeze > requirements_backup.txt       # yedek al\n"
+                f"  3. pip uninstall -r requirements_backup.txt -y\n"
+                f"  4. pip cache purge\n"
+                f"  5. pip install -r requirements.txt\n\n"
+                f"🔁 ALTERNATİF ÇÖZÜMLER:\n"
+                f"  - Sürüm kısıtlarını gevşet: requirements.txt'de '==' yerine '>='\n"
+                f"    kullan ya da sürümü tamamen kaldırıp sadece paket adını bırak.\n"
+                f"  - Temiz bir sanal ortam kurun (en garantili yöntem):\n"
+                f"      rmdir /s /q .venv\n"
+                f"      python -m venv .venv && .venv\\Scripts\\activate\n"
+                f"      pip install -r requirements.txt\n"
+                f"  - Çakışan paketi yalıtın:\n"
+                f"      pip install <paket> --ignore-installed\n\n"
                 f"💡 EK NOT:\n"
-                f"Eğer sorun devam ederse, requirements.txt'deki sürüm kısıtlamalarını\n"
-                f"geçici olarak kaldırıp sadece paket adlarını bırakın."
+                f"Genellikle bu hata iki kütüphanenin uyumsuzluğundan kaynaklanır;\n"
+                f"hata mesajındaki 'requires X but you have Y' satırı çakışan paketi\n"
+                f"açıkça gösterir."
             )
     
     # 2. JAVASCRIPT / TYPESCRIPT - npm/yarn çakışmaları
@@ -755,6 +790,10 @@ def menu_goster(kullan_cloud=False):
 
     def komut_olustur(k_adi, s_metin, cloud):
         def komut_calistir():
+            # 🐞 Kod Hatasını Açıkla: yeni akışa yönlendir (dil seç + kütüphane analizi)
+            if "Kod Hatasını Açıkla" in k_adi:
+                gui_queue.put((dil_secim_menu_goster, (s_metin,)))
+                return
             threading.Thread(
                 target=islemi_yap, args=(k_adi, s_metin, cloud), daemon=True
             ).start()
@@ -903,20 +942,8 @@ def hata_menu_goster():
         )
         return
 
-    # Önce dil seçimi menüsünü göster
-    gui_queue.put((dil_secim_menu_goster, (secili_metin,)))
-    menu.add_command(
-        label="☁️  Cloud AI ile Açıkla",
-        command=hata_analiz_cloud,
-    )
-    menu.add_separator()
-    menu.add_command(label="❌ İptal", command=lambda: None)
-
-    try:
-        x, y = pyautogui.position()
-        menu.tk_popup(x, y)
-    finally:
-        menu.grab_release()
+    # Dil seçimi menüsünü göster (ana thread zaten burası)
+    dil_secim_menu_goster(secili_metin)
 
 
 def on_press(key):
