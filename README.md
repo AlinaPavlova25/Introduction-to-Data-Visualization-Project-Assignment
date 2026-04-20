@@ -36,10 +36,14 @@ Seçili metin üzerinde AI işlemleri:
 
 Seçili hata metni önce **regex tabanlı yerel parser**'dan geçer:
 
-1. **Önce** kritik kütüphane/bağımlılık hatası var mı kontrol edilir
+1. **Dil otomatik tespit** edilir (`dil_otomatik_tespit`) — metindeki
+   sinyallere göre (Traceback, `CS1525`, `npm ERR!`, `error[E0425]` vb.)
+   skor hesaplanır, eşiği geçen dil otomatik seçilir ve dil menüsü atlanır.
+   Emin değilse fallback olarak manuel dil seçim menüsü açılır.
+2. **Sonra** kritik kütüphane/bağımlılık hatası var mı kontrol edilir
    (eksik modül, sürüm çakışması, peer dependency, NuGet/Maven/Gradle).
-2. Varsa → **detaylı "silip tekrar yükle" raporu** üretilir (AI beklemeden).
-3. Yoksa → klasik derleyici hata satırları parse edilir (örn. `CS1525`, satır numarası).
+3. Varsa → **detaylı "silip tekrar yükle" raporu** üretilir (AI beklemeden).
+4. Yoksa → klasik derleyici hata satırları parse edilir (örn. `CS1525`, satır numarası).
 
 **Desteklenen diller:** Python, JavaScript, TypeScript, Java, C#, C/C++, HTML/CSS,
 PHP, Rust, Go.
@@ -239,8 +243,11 @@ flowchart TD
     G --> H[Sonucu panoya yaz + Ctrl+V]
     H --> R([Son])
 
-    E --> I[Dil seçim menüsü\nPython / JS / C# / Java ...]
-    I --> J[hata_parser_basit çağrılır]
+    E --> AUTO{Dil otomatik tespit\ndil_otomatik_tespit}
+    AUTO -- "Güven skoru ≥ 6\n(Python / JS / C# ...)" --> AI[Lokal / Cloud AI seçim menüsü]
+    AUTO -- "Emin değil" --> I[Dil seçim menüsü\nPython / JS / C# / Java ...]
+    I --> AI
+    AI --> J[hata_parser_basit çağrılır]
     J --> K{kutuphane_cakismasi_analiz\nkritik hata buldu mu?}
 
     K -- Evet --> L[📦 Kütüphane / Sürüm Çakışması Raporu\n- Sorun\n- Olası kaynaklar\n- Silip tekrar yükle komutları\n- Alternatif çözümler]

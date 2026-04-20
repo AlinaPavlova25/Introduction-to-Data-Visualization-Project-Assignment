@@ -915,8 +915,89 @@ def hata_ai_menu_goster(secili_metin, dil_kodu):
         menu.grab_release()
 
 
+def dil_otomatik_tespit(hata_metni):
+    """
+    Hata metninden programlama dilini otomatik tespit eder.
+    Basit ama guclu sinyallere dayanir (skor bazli).
+    Dondurur: dil_kodu (str) veya None (emin degilse).
+    """
+    if not hata_metni:
+        return None
+
+    metin = hata_metni.lower()
+    skorlar = {
+        "python": 0, "javascript": 0, "typescript": 0, "java": 0,
+        "csharp": 0, "cpp": 0, "php": 0, "rust": 0, "go": 0, "html": 0,
+    }
+
+    # --- PYTHON (cok belirgin sinyaller) ---
+    if "traceback (most recent call last)" in metin: skorlar["python"] += 10
+    if "modulenotfounderror" in metin: skorlar["python"] += 8
+    if "importerror" in metin: skorlar["python"] += 6
+    if re.search(r'file "[^"]+\.py"', metin): skorlar["python"] += 6
+    if "indentationError".lower() in metin: skorlar["python"] += 5
+    if re.search(r'\b(pip|pip3)\b', metin): skorlar["python"] += 3
+    if re.search(r'\b\w+error\b.*:', metin) and "python" not in skorlar: pass
+    if "resolutionimpossible" in metin: skorlar["python"] += 7
+    if re.search(r'line \d+, in ', metin): skorlar["python"] += 5
+
+    # --- JAVASCRIPT / NODE ---
+    if "npm err!" in metin: skorlar["javascript"] += 10
+    if "node_modules" in metin: skorlar["javascript"] += 6
+    if "eresolve" in metin: skorlar["javascript"] += 8
+    if "cannot find module" in metin: skorlar["javascript"] += 7
+    if "peer dependency" in metin: skorlar["javascript"] += 6
+    if re.search(r'\.js[:\s]', metin): skorlar["javascript"] += 4
+    if "at function.module._resolvefilename" in metin: skorlar["javascript"] += 6
+
+    # --- TYPESCRIPT ---
+    if re.search(r'\bts\d{4}\b', metin): skorlar["typescript"] += 10
+    if re.search(r'\.ts[:\(]', metin): skorlar["typescript"] += 6
+    if "tsc " in metin or " tsc:" in metin: skorlar["typescript"] += 5
+
+    # --- C# ---
+    if re.search(r'\bcs\d{4}\b', metin): skorlar["csharp"] += 10
+    if re.search(r'\.cs\(\d+,\d+\)', metin): skorlar["csharp"] += 8
+    if re.search(r'\bnu\d{4}\b', metin): skorlar["csharp"] += 9  # NuGet
+    if "nuget" in metin: skorlar["csharp"] += 6
+    if re.search(r'\bdotnet\b', metin): skorlar["csharp"] += 4
+
+    # --- JAVA ---
+    if "exception in thread" in metin: skorlar["java"] += 8
+    if re.search(r'\.java:\d+', metin): skorlar["java"] += 7
+    if "maven" in metin or "mvn " in metin: skorlar["java"] += 6
+    if "gradle" in metin: skorlar["java"] += 6
+    if "failed to execute goal" in metin: skorlar["java"] += 7
+    if re.search(r'at (com|org|java)\.', metin): skorlar["java"] += 4
+
+    # --- C / C++ ---
+    if re.search(r'\.(cpp|cc|cxx|hpp|h)[:\s]', metin): skorlar["cpp"] += 7
+    if "undeclared" in metin and "node_modules" not in metin: skorlar["cpp"] += 3
+    if "was not declared" in metin: skorlar["cpp"] += 5
+    if re.search(r'\bg\+\+\b|\bgcc\b', metin): skorlar["cpp"] += 5
+
+    # --- RUST ---
+    if re.search(r'error\[e\d+\]', metin): skorlar["rust"] += 10
+    if "cargo" in metin: skorlar["rust"] += 5
+    if re.search(r'\.rs:\d+', metin): skorlar["rust"] += 6
+
+    # --- GO ---
+    if re.search(r'\.go:\d+', metin): skorlar["go"] += 7
+    if re.search(r'\bgo (build|run|get|mod)\b', metin): skorlar["go"] += 6
+
+    # --- PHP ---
+    if "php parse error" in metin or "php fatal error" in metin: skorlar["php"] += 10
+    if re.search(r'\.php(:|\son\sline)', metin): skorlar["php"] += 6
+
+    # En yuksek skorlu dili sec
+    en_iyi = max(skorlar, key=skorlar.get)
+    if skorlar[en_iyi] >= 6:  # esik: guven skoru
+        return en_iyi
+    return None
+
+
 def hata_menu_goster():
-    """Hata analizi için önce dil seçimi menüsünü gösterir."""
+    """F10 akisi: metni kopyala, dili otomatik tespit et, gerekirse menu goster."""
     secili_metin = secili_metni_kopyala()
     if not secili_metin.strip():
         gui_queue.put(
@@ -930,8 +1011,16 @@ def hata_menu_goster():
         )
         return
 
-    # Dil seçimi menüsünü göster (ana thread zaten burası)
-    dil_secim_menu_goster(secili_metin)
+    # Dili otomatik tespit etmeyi dene
+    otomatik_dil = dil_otomatik_tespit(secili_metin)
+    if otomatik_dil:
+        print(f"🔍 Dil otomatik tespit edildi: {otomatik_dil}")
+        # Menuyu atla, direkt AI secim menusune gec
+        hata_ai_menu_goster(secili_metin, otomatik_dil)
+    else:
+        # Emin degil → kullanici secsin
+        print("❓ Dil otomatik tespit edilemedi, menü gösteriliyor.")
+        dil_secim_menu_goster(secili_metin)
 
 
 def on_press(key):
