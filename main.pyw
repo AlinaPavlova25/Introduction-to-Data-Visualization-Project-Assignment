@@ -536,6 +536,84 @@ def python_traceback_parser(hata_metni):
     return sonuclar
 
 
+def cakisma_detay_cikar(hata_metni, dil_kodu):
+    """
+    Hata metninden cakisan paket isim + surum + kisit bilgilerini cikarir.
+    Don: formatli string (rapora enjekte icin) veya bos string.
+    """
+    satirlar_cikti = []
+
+    if dil_kodu == "python":
+        # "X 1.2.3 requires Y<2,>=1" veya "X 1.2.3 depends on Y op V"
+        # Kisit kismi: virgulle ayrilabilen operator+surum blogu
+        pat_requires = re.compile(
+            r'(?P<paket>[A-Za-z0-9_.\-]+)\s+'
+            r'(?P<surum>\d[\w.\-+!]*)\s+'
+            r'(?:requires|depends on)\s+'
+            r'(?P<hedef>[A-Za-z0-9_.\-]+)\s*'
+            r'(?P<kisit>[<>=!~]+[\w.\-+!]+(?:\s*,\s*[<>=!~]+[\w.\-+!]+)*(?:\s+and\s+[<>=!~]+[\w.\-+!]+)*)',
+            re.IGNORECASE,
+        )
+        gorulen = set()
+        for m in pat_requires.finditer(hata_metni):
+            paket = m.group("paket")
+            surum = m.group("surum")
+            hedef = m.group("hedef")
+            kisit = m.group("kisit").strip()
+            key = (paket, surum, hedef, kisit)
+            if key in gorulen:
+                continue
+            gorulen.add(key)
+            satirlar_cikti.append(
+                f"  • {paket} {surum}  →  ister:  {hedef} {kisit}"
+            )
+
+        # "but you have Y 1.2.3 which is incompatible"
+        pat_have = re.compile(
+            r'but you have\s+(?P<paket>[A-Za-z0-9_.\-]+)\s+'
+            r'(?P<surum>\d[\w.\-+!]*)',
+            re.IGNORECASE,
+        )
+        gorulen_kurulu = set()
+        for m in pat_have.finditer(hata_metni):
+            key = (m.group("paket"), m.group("surum"))
+            if key in gorulen_kurulu:
+                continue
+            gorulen_kurulu.add(key)
+            satirlar_cikti.append(
+                f"  • Kurulu olan:  {key[0]} {key[1]}  (uyumsuz)"
+            )
+
+    elif dil_kodu in ("javascript", "typescript"):
+        # NPM: "Found: X@1.2.3"  (surum aynı satırda biter, newline veya bosluk)
+        pat_found = re.compile(r'Found:\s*(?P<paket>[@\w.\-\/]+)@(?P<surum>[^\s\n]+)')
+        for m in pat_found.finditer(hata_metni):
+            satirlar_cikti.append(
+                f"  • Kurulu olan:  {m.group('paket')}@{m.group('surum')}"
+            )
+
+        # NPM: 'peer X@"..." from Y@1.2.3'
+        pat_peer = re.compile(
+            r'peer\s+(?P<paket>[@\w.\-\/]+)@["\']?(?P<kisit>[^"\'\n]+?)["\']?\s+from\s+'
+            r'(?P<kaynak>[@\w.\-\/]+)@(?P<kaynak_surum>[^\s\n]+)',
+            re.IGNORECASE,
+        )
+        for m in pat_peer.finditer(hata_metni):
+            satirlar_cikti.append(
+                f"  • {m.group('kaynak')}@{m.group('kaynak_surum')}  →  "
+                f"ister:  {m.group('paket')}@{m.group('kisit').strip()}"
+            )
+
+    if not satirlar_cikti:
+        return ""
+
+    return (
+        "🔎 TESPİT EDİLEN ÇAKIŞAN PAKETLER:\n"
+        + "\n".join(satirlar_cikti)
+        + "\n\n"
+    )
+
+
 def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
     """
     Kritik kütüphane çakışmaları, eski sürüm kullanımı ve bağımlılık hatalarını analiz eder.
@@ -592,6 +670,7 @@ def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
         
         # Sürüm çakışması - pip dependency resolver
         if "resolutionimpossible" in metin_lower or "cannot install" in metin_lower or "incompatible" in metin_lower or "version conflict" in metin_lower:
+            detay = cakisma_detay_cikar(hata_metni, "python")
             return (
                 f"⚠️ KÜTÜPHANE SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ (Python / pip)\n"
                 f"{'='*60}\n\n"
@@ -599,6 +678,7 @@ def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
                 f"Projede kullanılan paketlerin birbirinden istediği sürümler çelişiyor.\n"
                 f"pip, tüm koşulları aynı anda karşılayan bir sürüm kümesi bulamıyor ve\n"
                 f"kurulum yarıda kalıyor.\n\n"
+                f"{detay}"
                 f"🔍 HATANIN OLASI KAYNAKLARI:\n"
                 f"  1) requirements.txt içinde eski bir paket, yeni bir paketin güncel\n"
                 f"     sürümüyle uyumsuz (ör. numpy<1.20 iken pandas>=2.0 isteniyor).\n"
@@ -630,11 +710,13 @@ def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
     # 2. JAVASCRIPT / TYPESCRIPT - npm/yarn çakışmaları
     if dil_kodu in ["javascript", "typescript"]:
         if "eresolve" in metin_lower or "peer dependency" in metin_lower or "conflict" in metin_lower:
+            detay = cakisma_detay_cikar(hata_metni, "javascript")
             return (
                 f"⚠️ NPM KÜTÜPHANE ÇAKIŞMASI TESPİT EDİLDİ\n"
                 f"{'='*50}\n\n"
                 f"📋 SORUN:\n"
                 f"node_modules klasöründe paket sürümleri çakışıyor.\n\n"
+                f"{detay}"
                 f"🔍 HATANIN KAYNAĞI:\n"
                 f"Bazı paketler aynı bağımlılığın farklı sürümlerini gerektiriyor.\n"
                 f"npm/yarn bu çakışmayı çözemiyor.\n\n"

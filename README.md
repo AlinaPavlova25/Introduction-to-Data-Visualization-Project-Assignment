@@ -101,9 +101,12 @@ aranıyor ya da farklı bir Python sürümüne kurulmuş olabilir. Program
 
 **Seçilen hata metni:**
 ```
-ERROR: Cannot install -r requirements.txt because these package versions
-have conflicting dependencies.
-ResolutionImpossible: numpy==1.19 is incompatible with pandas>=2.0
+ERROR: pip's dependency resolver does not currently take into account all
+the packages that are installed.
+tensorflow 2.12.0 requires numpy<1.24,>=1.22, but you have numpy 1.26.0
+which is incompatible.
+pandas 2.0.0 requires numpy>=1.24.0, but you have numpy 1.26.0 which is
+incompatible.
 ```
 
 **F10 → Python → üretilen rapor (özet):**
@@ -111,7 +114,15 @@ ResolutionImpossible: numpy==1.19 is incompatible with pandas>=2.0
 ⚠️ KÜTÜPHANE SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ (Python / pip)
 ============================================================
 📋 SORUN: pip, tüm koşulları karşılayan bir sürüm kümesi bulamıyor.
-🔍 KAYNAK: numpy<1.20 iken pandas>=2.0 isteniyor (transitive conflict).
+
+🔎 TESPİT EDİLEN ÇAKIŞAN PAKETLER:
+  • tensorflow 2.12.0  →  ister:  numpy <1.24,>=1.22
+  • pandas 2.0.0       →  ister:  numpy >=1.24.0
+  • Kurulu olan:  numpy 1.26.0  (uyumsuz)
+
+🔍 KAYNAK: tensorflow <1.24 isterken pandas >=1.24 istiyor — çakışma
+       bu iki paketin numpy üzerinden birbirine uyumsuz olması.
+
 🛠️ ÇÖZÜM:
   1. python -m pip install --upgrade pip
   2. pip freeze > requirements_backup.txt
@@ -120,6 +131,10 @@ ResolutionImpossible: numpy==1.19 is incompatible with pandas>=2.0
   5. pip install -r requirements.txt
 🔁 ALTERNATİF: '==' yerine '>=' kullan, ya da temiz venv kur.
 ```
+
+> Paket isim + sürüm + kısıt bilgisi `cakisma_detay_cikar()` fonksiyonu
+> tarafından metinden regex ile ayıklanıp rapora otomatik enjekte edilir;
+> bu sayede hangi iki paketin neden çakıştığı tek bakışta görülür.
 
 ### Örnek 3 — Node.js: Eksik NPM Paketi
 
