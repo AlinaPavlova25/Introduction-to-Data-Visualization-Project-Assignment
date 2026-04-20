@@ -12,7 +12,7 @@ Windows için sistem çapında çalışan AI destekli metin işleme, kod hata ay
 
 ## 1. Özellikler
 
-### 1.1 Metin İşleme (F8 / F9)
+### 1.1 Metin İşleme (F8 / F9) — Hocanın orijinal akışı
 Seçili metin üzerinde AI işlemleri:
 
 - 📝 Gramer Düzelt
@@ -23,15 +23,14 @@ Seçili metin üzerinde AI işlemleri:
 - 🐍 Python Koduna Çevir
 - 📧 Cevap Yaz (Mail)
 - 🎮 PS5 Oyun Skor + Acımasız Yorum
-- 🐞 **Kod Hatasını Açıkla** → dil seçimi + kütüphane/çakışma analizi akışına yönlenir
 
 **Kısayollar**
 
 | Tuş | İşlev |
 |-----|-------|
-| `F8` | Lokal Ollama AI menüsü (Kod Hatasını Açıkla seçilirse analiz akışına gider) |
-| `F9` | Google Cloud Gemini AI menüsü (aynı yönlendirme) |
-| `F10` | Doğrudan kod/kütüphane hata analizi akışı |
+| `F8` | Lokal Ollama AI menüsü (hocanın orijinal metin işleme akışı) |
+| `F9` | Google Cloud Gemini AI menüsü (aynı menü, cloud modelle) |
+| `F10` | **Kod hata & kütüphane çakışması analizi** (bu projenin eklentisi) |
 
 ### 1.2 Kod Hata & Kütüphane Çakışması Analizi
 
@@ -78,16 +77,16 @@ aranıyor ya da farklı bir Python sürümüne kurulmuş olabilir...
 
 ```mermaid
 flowchart TD
-    A[Kullanıcı editörde hata metnini seçer] --> B{Hangi kısayol?}
-    B -- F8 --> C[Ollama Lokal menüsü]
-    B -- F9 --> D[Gemini Cloud menüsü]
-    B -- F10 --> E[Doğrudan hata analiz akışı]
+    A[Kullanıcı editörde metni seçer] --> B{Hangi kısayol?}
 
-    C --> F{Menüden seçim}
-    D --> F
-    F -- 'Kod Hatasını Açıkla' --> E
-    F -- Diğer işlemler\n(gramer, çeviri, özet...) --> G[AI'a prompt gönder\nOllama / Gemini]
+    B -- F8 --> C[Ollama Lokal menüsü\nhocanın orijinal işlemleri]
+    B -- F9 --> D[Gemini Cloud menüsü\naynı işlemler, cloud modelle]
+    B -- F10 --> E[Kod hata & kütüphane analizi akışı\nbu projenin eklentisi]
+
+    C --> G[AI'a prompt gönder\ngramer / çeviri / özet / mail / PS5...]
+    D --> G
     G --> H[Sonucu panoya yaz + Ctrl+V]
+    H --> R([Son])
 
     E --> I[Dil seçim menüsü\nPython / JS / C# / Java ...]
     I --> J[hata_parser_basit çağrılır]
@@ -103,7 +102,6 @@ flowchart TD
     L --> Q[Sonuç penceresi\nToplevel + panoya kopyala]
     O --> Q
     P --> Q
-    H --> R([Son])
     Q --> R
 ```
 

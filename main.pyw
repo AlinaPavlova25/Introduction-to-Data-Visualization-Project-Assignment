@@ -131,17 +131,6 @@ ISLEMLER = {
         "Kurallar: Kesin bilmediğin puanı uydurma, onun yerine 'bilgi yok' yaz. "
         "Yorumu skorlarla tutarlı kur."
     ),
-    "🐞 Kod Hatasını Açıkla": (
-        "Bu metin bir kod hatası veya hata mesajı içeriyor. Lütfen şunları yap:\n"
-        "1) Hatayı basit Türkçe ile açıkla (teknik terimleri açıkla)\n"
-        "2) Olası çözüm önerisi ver (kısa ve net)\n"
-        "3) Hangi programlama dili olduğunu belirt\n\n"
-        "Format:\n"
-        "🔴 Hata: [hata adı/tipi]\n"
-        "📝 Açıklama: [Türkçe açıklama]\n"
-        "💡 Çözüm: [öneri]\n"
-        "🌐 Dil: [programlama dili]"
-    ),
 }
 
 
@@ -790,10 +779,6 @@ def menu_goster(kullan_cloud=False):
 
     def komut_olustur(k_adi, s_metin, cloud):
         def komut_calistir():
-            # 🐞 Kod Hatasını Açıkla: yeni akışa yönlendir (dil seç + kütüphane analizi)
-            if "Kod Hatasını Açıkla" in k_adi:
-                gui_queue.put((dil_secim_menu_goster, (s_metin,)))
-                return
             threading.Thread(
                 target=islemi_yap, args=(k_adi, s_metin, cloud), daemon=True
             ).start()
