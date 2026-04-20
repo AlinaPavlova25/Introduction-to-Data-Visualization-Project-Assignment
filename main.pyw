@@ -866,10 +866,32 @@ def hata_analiz_et(secili_metin, dil_kodu, kullan_cloud=False):
     
     # Normal syntax hataları
     if not hatalar:
-        cikti = f"🌐 Dil: {dil_adi}\n\n"
-        cikti += "⚠️ Hata formatı tanınamadı.\n"
-        cikti += "📝 Seçili metin:\n"
-        cikti += secili_metin[:200] + "..." if len(secili_metin) > 200 else secili_metin
+        # AI FALLBACK: parser hic bir sey yakalayamadi -> Ollama'ya sor
+        print(f"🤖 Parser eşleşme bulamadı, Ollama AI fallback devrede...")
+        ai_prompt = (
+            f"Aşağıdaki {dil_adi} kodunun/hata mesajının sorununu Türkçe açıkla.\n"
+            f"ŞU FORMATTA kısa ve net cevap ver:\n"
+            f"🔴 Sorun: <tek cümleyle hatanın ne olduğu>\n"
+            f"🔍 Neden: <muhtemel kök sebep, 1-2 cümle>\n"
+            f"🛠️ Çözüm:\n"
+            f"  1. <adım 1>\n"
+            f"  2. <adım 2>\n"
+            f"  3. <varsa adım 3>\n\n"
+            f"Kod veya hata metni:\n"
+            f"```\n{secili_metin[:1500]}\n```"
+        )
+        ai_cevap = ollama_hata_cevap_al(ai_prompt)
+
+        cikti = f"🌐 Dil: {dil_adi}\n"
+        if ai_cevap:
+            cikti += "🤖 AI Analizi (parser eşleşmedi, Ollama yorumu):\n"
+            cikti += "=" * 60 + "\n\n"
+            cikti += strip_code_fence(ai_cevap)
+        else:
+            cikti += "⚠️ Hata formatı tanınamadı.\n"
+            cikti += "(Ollama çalışmıyor olduğu için AI fallback da devreye giremedi.)\n\n"
+            cikti += "📝 Seçili metin:\n"
+            cikti += secili_metin[:200] + "..." if len(secili_metin) > 200 else secili_metin
     else:
         cikti = f"🌐 Dil: {dil_adi}\n"
         cikti += f"📊 {len(hatalar)} hata bulundu\n\n"

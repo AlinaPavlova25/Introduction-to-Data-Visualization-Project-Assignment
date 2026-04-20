@@ -304,10 +304,13 @@ flowchart TD
 
     M --> N{Hata bulundu mu?}
     N -- Evet --> O[Hata kodu → Türkçe açıklama\nsözlükten eşleştirme]
-    N -- Hayır --> P[⚠️ 'Format tanınamadı' bilgisi]
+    N -- Hayır --> AIFB{Ollama erişilebilir mi?}
+    AIFB -- Evet --> AIR[🤖 AI Fallback\nOllama'ya prompt gönder\nSorun / Neden / Çözüm formatı]
+    AIFB -- Hayır --> P[⚠️ 'Format tanınamadı' bilgisi\n+ seçili metin önizleme]
 
     L --> Q[Sonuç penceresi\nToplevel + panoya kopyala]
     O --> Q
+    AIR --> Q
     P --> Q
     Q --> R
 ```
@@ -422,9 +425,33 @@ Rapor penceresinde **🛠️ Komutları Çalıştır (N)** butonu otomatik belir
 PowerShell native (`Remove-Item`, `rmdir`) — hepsi Windows-uyumlu biçimde
 yazıldı.
 
+### 5.4 AI Fallback (tanınmayan hatalar için)
+
+Eğer hata metni ne `kutuphane_cakismasi_analiz` kalıplarına ne de
+derleyici regex'ine uymuyorsa (parser boş dönüyorsa), sistem **Ollama
+lokal AI**'a otomatik bir prompt gönderir:
+
+```
+Aşağıdaki <dil> kodunun/hata mesajının sorununu Türkçe açıkla.
+ŞU FORMATTA kısa ve net cevap ver:
+🔴 Sorun: <tek cümleyle hatanın ne olduğu>
+🔍 Neden: <muhtemel kök sebep>
+🛠️ Çözüm:
+  1. <adım 1>
+  2. <adım 2>
+  3. <varsa adım 3>
+```
+
+- Cevap formatı parser çıktısına benzer olduğu için rapor penceresinde
+  aynı şekilde gösterilir.
+- "Komutları Çalıştır" butonu AI cevabındaki numaralı adımları da
+  yakalayabilir (aynı regex).
+- Ollama kurulu değilse ya da kapalıysa eski **"Format tanınamadı"**
+  bilgisi + seçili metin önizlemesi gösterilir (graceful degradation).
+
 ---
 
-### 5.4 AI Modelleri
+### 5.5 AI Modelleri
 
 | Model                       | Kullanım    | Yaklaşık süre (CPU) |
 |-----------------------------|-------------|---------------------|
