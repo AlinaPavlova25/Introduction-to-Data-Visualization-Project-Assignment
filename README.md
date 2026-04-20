@@ -404,7 +404,27 @@ dosya.cs(18,8): error CS1525: Unexpected symbol `Console'
 | JavaScript | 26 | TypeError, `Cannot read properties of undefined`, EADDRINUSE, ECONNREFUSED, ENOENT... |
 | C/C++ | 24 | `undefined reference`, `no matching function`, `segmentation fault`, `incomplete type`... |
 
-### 5.3 AI Modelleri
+### 5.3 "Komutları Çalıştır" Butonu
+
+Rapor penceresinde **🛠️ Komutları Çalıştır (N)** butonu otomatik belirir
+(yalnızca rapor numaralı komut içeriyorsa). Akış:
+
+1. `komutlari_cikart(icerik)` raporun `🛠️ ÇÖZÜM` bloğundaki numaralı
+   satırları regex ile toplar.
+2. Butona tıklanınca onay diyalogu açılır (komutlar listelenir +
+   "paketleri SİLİP yeniden kurar" uyarısı).
+3. Onaylanırsa komutlar `" ; "` ile birleştirilip **yeni bir PowerShell
+   penceresinde** (`-NoExit`) sırayla çalışır. Pencere kapanmaz — çıktıyı
+   görebilirsin.
+4. Komut içermeyen raporlarda (saf syntax hatası vb.) buton görünmez.
+
+**Desteklenen komut türleri:** `pip`, `npm`, `dotnet`, `mvn`, `gradle`,
+PowerShell native (`Remove-Item`, `rmdir`) — hepsi Windows-uyumlu biçimde
+yazıldı.
+
+---
+
+### 5.4 AI Modelleri
 
 | Model                       | Kullanım    | Yaklaşık süre (CPU) |
 |-----------------------------|-------------|---------------------|

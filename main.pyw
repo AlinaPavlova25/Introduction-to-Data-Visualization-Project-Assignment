@@ -9,6 +9,7 @@ import requests
 import queue
 import os
 import re
+import subprocess
 
 try:
     from google import genai as google_genai
@@ -722,7 +723,7 @@ def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
                 f"npm/yarn bu çakışmayı çözemiyor.\n\n"
                 f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
                 f"Terminalde şu komutları sırayla çalıştırın:\n\n"
-                f"1. rm -rf node_modules package-lock.json\n"
+                f"1. Remove-Item -Recurse -Force node_modules, package-lock.json -ErrorAction SilentlyContinue\n"
                 f"2. npm cache clean --force\n"
                 f"3. npm install\n\n"
                 f"💡 EK NOT:\n"
@@ -961,6 +962,34 @@ def pencere_modunda_gosterilsin_mi(komut_adi):
     return "PS5 Oyun Skor" in komut_adi
 
 
+def komutlari_cikart(icerik):
+    """
+    Rapordan 'SİLİP TEKRAR YÜKLE' bloku icindeki numarali komutlari cikarir.
+    'ÇÖZÜM' basligindan sonra; 'ALTERNATİF', 'EK NOT', 💡 emoji gordugunde biter.
+    """
+    komutlar = []
+    icinde = False
+    for satir in icerik.splitlines():
+        if "ÇÖZÜM" in satir:
+            icinde = True
+            continue
+        if icinde:
+            if ("ALTERNATİF" in satir or "EK NOT" in satir
+                    or satir.lstrip().startswith("💡")
+                    or satir.lstrip().startswith("🔁")
+                    or satir.lstrip().startswith("🔍")):
+                icinde = False
+                continue
+            # Numarali satir: "  1. pip uninstall pandas -y"
+            m = re.match(r'^\s*\d+\.\s+(.+?)\s*(?:#.*)?$', satir)
+            if m:
+                cmd = m.group(1).strip()
+                # "Terminalde ..." aciklama satirlarini atla
+                if cmd and not cmd.lower().startswith(("terminalde", "sirayla", "maven:", "gradle:")):
+                    komutlar.append(cmd)
+    return komutlar
+
+
 def sonuc_penceresi_goster(baslik, icerik):
     pencere = tk.Toplevel(root)
     pencere.title(baslik)
@@ -995,6 +1024,51 @@ def sonuc_penceresi_goster(baslik, icerik):
 
     def panoya_kopyala():
         pyperclip.copy(icerik)
+
+    def komutlari_calistir():
+        komutlar = komutlari_cikart(icerik)
+        if not komutlar:
+            messagebox.showinfo(
+                "Komut Bulunamadı",
+                "Bu raporda çalıştırılabilir 'silip tekrar yükle' komutu yok.",
+            )
+            return
+        ozet = "\n".join(f"  {i+1}. {k}" for i, k in enumerate(komutlar))
+        onay = messagebox.askyesno(
+            "Komutları Çalıştır?",
+            f"Aşağıdaki {len(komutlar)} komut yeni bir PowerShell penceresinde\n"
+            f"SIRAYLA çalıştırılacak. Pencere iş bitince kapanmayacak\n"
+            f"(çıktıyı kontrol edebilmen için).\n\n"
+            f"{ozet}\n\n"
+            f"⚠️  Komutlar paketleri SİLİP yeniden kurar. Devam edilsin mi?",
+        )
+        if not onay:
+            return
+        # Her komut basarisiz olsa bile sonrakine gec -> ';' operatoru
+        birlesik = " ; ".join(komutlar)
+        try:
+            subprocess.Popen(
+                ["powershell", "-NoExit", "-Command", birlesik],
+                creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
+            )
+        except Exception as e:
+            messagebox.showerror("Çalıştırma Hatası", f"PowerShell başlatılamadı:\n{e}")
+
+    # 'Komutları Calistir' butonu sadece rapor gercekten komut iceriyorsa gorunsun
+    komut_sayisi = len(komutlari_cikart(icerik))
+    if komut_sayisi > 0:
+        tk.Button(
+            alt_frame,
+            text=f"🛠️ Komutları Çalıştır ({komut_sayisi})",
+            command=komutlari_calistir,
+            bg="#c85a1a",
+            fg="white",
+            activebackground="#e07030",
+            activeforeground="white",
+            relief="flat",
+            padx=12,
+            pady=6,
+        ).pack(side="left", padx=(8, 0))
 
     tk.Button(
         alt_frame,
