@@ -279,62 +279,14 @@ def gemini_cevap_al(prompt):
         return None
 
 
-def kutuphane_cakismasi_kontrol(hata_metni, dil_kodu):
-    """Hata metninde kütüphane çakışması, eski sürüm veya eksik modül arar ve rapor üretir."""
-    metin = hata_metni.lower()
-    
-    # 1. Sürüm çakışmaları (Version conflicts, peer dependencies)
-    if 'version conflict' in metin or 'eresolve' in metin or 'peer dependency' in metin or 'incompatible' in metin or 'requires version' in metin:
-        rapor = (
-            "⚠️ KÜTÜPHANE/SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ\n"
-            "------------------------------------------\n"
-            "Hata Kaynağı: Projedeki kütüphanelerin birbirleriyle veya sistemle sürüm uyumsuzluğu var.\n\n"
-            "🛠️ ÇÖZÜM ÖNERİSİ:\n"
-            "Mevcut kütüphane kurulumlarında bir çakışma (eski sürüm kullanımı vb.) söz konusu.\n"
-        )
-        if dil_kodu == "python":
-            rapor += "Lütfen terminalde çakışan paketi silip temiz bir kurulum yapın:\n"
-            rapor += "1. pip uninstall [paket_adi]\n"
-            rapor += "2. pip install [paket_adi] --upgrade\n"
-            rapor += "(Eğer sorun çok paketliyse: pip freeze > req.txt yapıp sanal ortamı baştan kurun.)"
-        elif dil_kodu in ["javascript", "typescript"]:
-            rapor += "Lütfen npm/yarn önbelleğini temizleyip yeniden yükleme yapın:\n"
-            rapor += "1. rm -rf node_modules package-lock.json\n"
-            rapor += "2. npm cache clean --force\n"
-            rapor += "3. npm install\n"
-            rapor += "(Eğer spesifik bir paket hatasıysa 'npm install [paket_adi]@latest' deneyin.)"
-        else:
-            rapor += "Lütfen projenin bağımlılık yönetim aracını kullanarak hatalı paketi silip güncel sürümünü yeniden yükleyin."
-        return rapor
-
-    # 2. Modül/Kütüphane Bulunamadı (Missing packages, import errors)
-    if 'modulenotfounderror' in metin or 'importerror' in metin or 'cannot find module' in metin or 'no module named' in metin or 'error cs0246' in metin:
-        rapor = (
-            "⚠️ EKSİK KÜTÜPHANE TESPİT EDİLDİ\n"
-            "--------------------------------\n"
-            "Hata Kaynağı: Kodda çağrılan bir kütüphane veya paket sistemde kurulu değil (veya yolda bulunamıyor).\n\n"
-            "🛠️ ÇÖZÜM ÖNERİSİ:\n"
-            "Eksik paketi yüklemeniz gerekiyor.\n"
-        )
-        if dil_kodu == "python":
-            rapor += "Terminalde şu komutla paketi kurun:\n"
-            rapor += "pip install [paket_adi]\n"
-            rapor += "(Eğer kuruluysa sanal ortamın aktif olduğundan emin olun.)"
-        elif dil_kodu in ["javascript", "typescript"]:
-            rapor += "Terminalde şu komutla paketi kurun:\n"
-            rapor += "npm install [paket_adi]\n"
-        elif dil_kodu == "csharp":
-            rapor += "NuGet Paket Yöneticisi üzerinden eksik kütüphaneyi projeye dahil edin:\n"
-            rapor += "dotnet add package [paket_adi]"
-        else:
-            rapor += "Dilinize uygun paket yöneticisi ile eksik kütüphaneyi indirip kurun."
-        return rapor
-
-    return None
-
 def hata_parser_basit(hata_metni, dil_kodu):
     """Basit regex/string parsing ile hata analizi yapar."""
     sonuclar = []
+    
+    # YENİ: Önce kritik kütüphane/bağımlılık hatalarını kontrol et
+    kutuphane_raporu = kutuphane_cakismasi_analiz(hata_metni, dil_kodu)
+    if kutuphane_raporu:
+        return [{"tip": "kutuphane_raporu", "rapor": kutuphane_raporu}]
     
     # Pattern: dosya.cs(18,8): error CS1525: mesaj
     pattern = r'(\w+\.\w+)\((\d+),(\d+)\):\s*(?:error|warning)\s+(\w+):\s*(.+)'
@@ -354,6 +306,152 @@ def hata_parser_basit(hata_metni, dil_kodu):
             })
     
     return sonuclar
+
+
+def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
+    """
+    Kritik kütüphane çakışmaları, eski sürüm kullanımı ve bağımlılık hatalarını analiz eder.
+    Hocanın istediği 'silip tekrar yükle' raporunu üretir.
+    """
+    metin_lower = hata_metni.lower()
+    
+    # 1. PYTHON - Modül bulunamadı / Import hatası
+    if dil_kodu == "python":
+        # ModulNotFoundError veya ImportError
+        if "modulenotfounderror" in metin_lower or "importerror" in metin_lower or "no module named" in metin_lower:
+            # Hangi modül olduğunu bul
+            modul_match = re.search(r"no module named ['\"]([^'\"]+)['\"]", metin_lower)
+            if not modul_match:
+                modul_match = re.search(r"modulenotfounderror: no module named ['\"]?([^'\"\s]+)['\"]?", metin_lower)
+            
+            modul_adi = modul_match.group(1) if modul_match else "[modül_adı]"
+            
+            return (
+                f"⚠️ EKSİK KÜTÜPHANE TESPİT EDİLDİ\n"
+                f"{'='*50}\n\n"
+                f"📋 SORUN:\n"
+                f"'{modul_adi}' kütüphanesi sistemde kurulu değil veya Python tarafından bulunamıyor.\n\n"
+                f"🔍 HATANIN KAYNAĞI:\n"
+                f"Kodunuzda `import {modul_adi}` veya `from {modul_adi} import ...` şeklinde\n"
+                f"bir kullanım var ancak bu kütüphane sanal ortamınızda (venv) yok.\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
+                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
+                f"1. pip uninstall {modul_adi} -y\n"
+                f"2. pip install {modul_adi} --upgrade\n\n"
+                f"💡 EK NOT:\n"
+                f"Eğer sanal ortam (venv) kullanıyorsanız, önce ortamı aktif edin:\n"
+                f"   .venv\\Scripts\\activate"
+            )
+        
+        # Sürüm çakışması - pip dependency resolver
+        if "resolutionimpossible" in metin_lower or "cannot install" in metin_lower or "incompatible" in metin_lower:
+            return (
+                f"⚠️ KÜTÜPHANE SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ\n"
+                f"{'='*50}\n\n"
+                f"📋 SORUN:\n"
+                f"Projedeki kütüphanelerin sürümleri birbiriyle uyumsuz.\n\n"
+                f"🔍 HATANIN KAYNAĞI:\n"
+                f"Bazı paketler belirli sürüm aralıklarında çalışırken, diğerleri\n"
+                f"farklı sürümler gerektiriyor. pip çözümleyici bu çakışmayı çözemiyor.\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
+                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
+                f"1. pip freeze > requirements_backup.txt\n"
+                f"2. pip uninstall -r requirements.txt -y\n"
+                f"3. pip cache purge\n"
+                f"4. pip install -r requirements.txt\n\n"
+                f"💡 EK NOT:\n"
+                f"Eğer sorun devam ederse, requirements.txt'deki sürüm kısıtlamalarını\n"
+                f"geçici olarak kaldırıp sadece paket adlarını bırakın."
+            )
+    
+    # 2. JAVASCRIPT / TYPESCRIPT - npm/yarn çakışmaları
+    if dil_kodu in ["javascript", "typescript"]:
+        if "eresolve" in metin_lower or "peer dependency" in metin_lower or "conflict" in metin_lower:
+            return (
+                f"⚠️ NPM KÜTÜPHANE ÇAKIŞMASI TESPİT EDİLDİ\n"
+                f"{'='*50}\n\n"
+                f"📋 SORUN:\n"
+                f"node_modules klasöründe paket sürümleri çakışıyor.\n\n"
+                f"🔍 HATANIN KAYNAĞI:\n"
+                f"Bazı paketler aynı bağımlılığın farklı sürümlerini gerektiriyor.\n"
+                f"npm/yarn bu çakışmayı çözemiyor.\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
+                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
+                f"1. rm -rf node_modules package-lock.json\n"
+                f"2. npm cache clean --force\n"
+                f"3. npm install\n\n"
+                f"💡 EK NOT:\n"
+                f"Eğer sorun devam ederse '--legacy-peer-deps' flag'i deneyin:\n"
+                f"   npm install --legacy-peer-deps"
+            )
+        
+        if "cannot find module" in metin_lower or "module not found" in metin_lower:
+            modul_match = re.search(r"cannot find module ['\"]([^'\"]+)['\"]", metin_lower)
+            modul_adi = modul_match.group(1) if modul_match else "[modül_adı]"
+            
+            return (
+                f"⚠️ EKSİK NPM PAKETİ TESPİT EDİLDİ\n"
+                f"{'='*50}\n\n"
+                f"📋 SORUN:\n"
+                f"'{modul_adi}' paketi node_modules'da bulunamıyor.\n\n"
+                f"🔍 HATANIN KAYNAĞI:\n"
+                f"Kodda bu paket import edilmiş ama kurulumu eksik veya\n"
+                f"package.json'da tanımlı değil.\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
+                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
+                f"1. npm uninstall {modul_adi}\n"
+                f"2. npm install {modul_adi} --save\n\n"
+                f"💡 EK NOT:\n"
+                f"Eğer global paketse: npm install -g {modul_adi}"
+            )
+    
+    # 3. C# - NuGet paket çakışmaları
+    if dil_kodu == "csharp":
+        if "nuget" in metin_lower or "package restore" in metin_lower or "unable to find" in metin_lower:
+            return (
+                f"⚠️ NUGET PAKET SORUNU TESPİT EDİLDİ\n"
+                f"{'='*50}\n\n"
+                f"📋 SORUN:\n"
+                f"NuGet paketleri yüklenemiyor veya çakışıyor.\n\n"
+                f"🔍 HATANIN KAYNAĞI:\n"
+                f"Proje dosyasındaki (csproj) paket referanslarında\n"
+                f"sürüm uyumsuzluğu veya eksik paket var.\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
+                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
+                f"1. dotnet clean\n"
+                f"2. rmdir /s /q bin obj\n"
+                f"3. dotnet restore --force\n"
+                f"4. dotnet build\n\n"
+                f"💡 EK NOT:\n"
+                f"Eğer sorun devam ederse NuGet önbelleğini temizleyin:\n"
+                f"   dotnet nuget locals all --clear"
+            )
+    
+    # 4. JAVA - Maven/Gradle çakışmaları
+    if dil_kodu == "java":
+        if "maven" in metin_lower or "gradle" in metin_lower or "dependency" in metin_lower:
+            return (
+                f"⚠️ MAVEN/GRADLE BAĞIMLILIK SORUNU TESPİT EDİLDİ\n"
+                f"{'='*50}\n\n"
+                f"📋 SORUN:\n"
+                f"Java bağımlılıklarında çakışma veya eksik kütüphane var.\n\n"
+                f"🔍 HATANIN KAYNAĞI:\n"
+                f"pom.xml (Maven) veya build.gradle dosyasında tanımlı\n"
+                f"paketler çakışıyor veya indirilemiyor.\n\n"
+                f"🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE':\n"
+                f"Terminalde şu komutları sırayla çalıştırın:\n\n"
+                f"MAVEN için:\n"
+                f"1. mvn clean\n"
+                f"2. rmdir /s /q target\n"
+                f"3. mvn dependency:purge-local-repository\n"
+                f"4. mvn install\n\n"
+                f"GRADLE için:\n"
+                f"1. gradle clean\n"
+                f"2. rmdir /s /q build .gradle\n"
+                f"3. gradle build --refresh-dependencies"
+            )
+    
+    return None
 
 
 def hata_aciklama_bul(hata_kodu, hata_mesaji, dil_kodu):
@@ -406,26 +504,24 @@ def hata_analiz_et(secili_metin, dil_kodu, kullan_cloud=False):
     }
     dil_adi = dil_isimleri.get(dil_kodu, dil_kodu)
     
-    # 1. Aşama: Kütüphane / Sürüm / Bağımlılık Çakışması Kontrolü
-    cakisma_raporu = kutuphane_cakismasi_kontrol(secili_metin, dil_kodu)
+    # Parser çalıştır (önce kritik kütüphane hatalarını kontrol eder)
+    hatalar = hata_parser_basit(secili_metin, dil_kodu)
     
-    if cakisma_raporu:
-        cikti = f"🌐 Dil: {dil_adi}\n\n{cakisma_raporu}"
+    # Eğer kütüphane raporu döndüyse, onu göster
+    if hatalar and len(hatalar) > 0 and hatalar[0].get("tip") == "kutuphane_raporu":
+        rapor = hatalar[0].get("rapor", "")
+        cikti = f"🌐 Dil: {dil_adi}\n\n{rapor}"
         gui_queue.put((sonuc_penceresi_goster, (f"🐞 {dil_adi} Kritik Hata Raporu", cikti)))
         print(f"✅ {dil_adi} kritik hata analizi tamamlandı.")
         return
-
-    # 2. Aşama: Basit Syntax Parser çalıştır
-    hatalar = hata_parser_basit(secili_metin, dil_kodu)
     
+    # Normal syntax hataları
     if not hatalar:
-        # Parser bulamadıysa basit mesaj göster
         cikti = f"🌐 Dil: {dil_adi}\n\n"
-        cikti += "⚠️ Hata formatı tanınamadı veya kritik bir bağımlılık sorunu bulunamadı.\n"
+        cikti += "⚠️ Hata formatı tanınamadı.\n"
         cikti += "📝 Seçili metin:\n"
         cikti += secili_metin[:200] + "..." if len(secili_metin) > 200 else secili_metin
     else:
-        # Sonuçları formatla
         cikti = f"🌐 Dil: {dil_adi}\n"
         cikti += f"📊 {len(hatalar)} hata bulundu\n\n"
         
