@@ -12,7 +12,7 @@ Windows için sistem çapında çalışan AI destekli metin işleme, kod hata ay
 
 ## 1. Özellikler
 
-### 1.1 Metin İşleme (F8 / F9) — Hocanın orijinal akışı
+### 1.1 Metin İşleme (F8 / F9) — Temel AI akışı
 Seçili metin üzerinde AI işlemleri:
 
 - 📝 Gramer Düzelt
@@ -28,7 +28,7 @@ Seçili metin üzerinde AI işlemleri:
 
 | Tuş | İşlev |
 |-----|-------|
-| `F8` | Lokal Ollama AI menüsü (hocanın orijinal metin işleme akışı) |
+| `F8` | Lokal Ollama AI menüsü (temel metin işleme akışı) |
 | `F9` | Google Cloud Gemini AI menüsü (aynı menü, cloud modelle) |
 | `F10` | **Kod hata & kütüphane çakışması analizi** (bu projenin eklentisi) |
 
@@ -283,7 +283,7 @@ olmayan custom hata tipleri için hata tipi + mesaj çıktıya aktarılır.
 flowchart TD
     A[Kullanıcı editörde metni seçer] --> B{Hangi kısayol?}
 
-    B -- F8 --> C[Ollama Lokal menüsü\nhocanın orijinal işlemleri]
+    B -- F8 --> C[Ollama Lokal menüsü\ntemel metin işlemleri]
     B -- F9 --> D[Gemini Cloud menüsü\naynı işlemler, cloud modelle]
     B -- F10 --> E[Kod hata & kütüphane analizi akışı\nbu projenin eklentisi]
 
