@@ -453,7 +453,10 @@ def kutuphane_cakismasi_analiz(hata_metni, dil_kodu):
     
     # 4. JAVA - Maven/Gradle çakışmaları
     if dil_kodu == "java":
-        if "maven" in metin_lower or "gradle" in metin_lower or "dependency" in metin_lower:
+        if ("maven" in metin_lower or "gradle" in metin_lower
+                or "dependenc" in metin_lower   # "dependency" VE "dependencies" ikisini de yakalar
+                or "could not resolve" in metin_lower
+                or "failed to execute goal" in metin_lower):
             return (
                 f"⚠️ MAVEN/GRADLE BAĞIMLILIK SORUNU TESPİT EDİLDİ\n"
                 f"{'='*50}\n\n"

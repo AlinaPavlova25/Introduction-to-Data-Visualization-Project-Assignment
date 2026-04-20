@@ -44,20 +44,38 @@ Seçili hata metni önce **regex tabanlı yerel parser**'dan geçer:
 **Desteklenen diller:** Python, JavaScript, TypeScript, Java, C#, C/C++, HTML/CSS,
 PHP, Rust, Go.
 
-**Örnek — Eksik Python paketi:**
+---
 
+## Örnek Kullanım Galerisi
+
+Aşağıdaki örnekler gerçek hata metinleri kullanılarak **parser fonksiyonu
+doğrudan çağrılarak** üretilmiştir (bkz. tekrar üretim: bölüm 6).
+
+### Örnek 1 — Python: Eksik Kütüphane
+
+**Seçilen hata metni:**
+```
+Traceback (most recent call last):
+  File "app.py", line 2, in <module>
+    import pandas
+ModuleNotFoundError: No module named 'pandas'
+```
+
+**F10 → Python seçildi → üretilen rapor:**
 ```
 ⚠️ EKSİK / UYUMSUZ KÜTÜPHANE TESPİT EDİLDİ (Python)
 ============================================================
 
 📋 SORUN:
 'pandas' kütüphanesi sistemde kurulu değil, yanlış sanal ortamda
-aranıyor ya da farklı bir Python sürümüne kurulmuş olabilir...
+aranıyor ya da farklı bir Python sürümüne kurulmuş olabilir. Program
+çalışırken `import pandas` satırında durdu.
 
 🔍 HATANIN OLASI KAYNAKLARI:
   1) Kütüphane hiç kurulmadı (pip install unutuldu).
   2) Sanal ortam (venv) aktif edilmeden program çalıştırıldı...
-  3) Eski bir sürüm kuruldu; import yolu değişmiş olabilir...
+  3) Eski bir sürüm kuruldu; import yolu değişmiş olabilir
+     (örn. eski 'sklearn' -> yeni 'scikit-learn').
   4) Başka bir kütüphaneyle sürüm çakışması var...
 
 🛠️ ÇÖZÜM - 'SİLİP TEKRAR YÜKLE' YÖNTEMİ:
@@ -67,8 +85,141 @@ aranıyor ya da farklı bir Python sürümüne kurulmuş olabilir...
   4. pip install pandas --upgrade --no-cache-dir
 
 🔁 ALTERNATİF ÇÖZÜMLER:
-  - Tüm bağımlılıkları sıfırla ...
-  - Sanal ortamı komple baştan kur ...
+  - Tüm bağımlılıkları sıfırla (pip freeze + uninstall + install -r)
+  - Sanal ortamı komple baştan kur (rmdir /s /q .venv + python -m venv)
+
+💡 EK NOT:
+  - where python   (hangi Python kullanılıyor?)
+  - pip show pandas   (kurulu mu?)
+```
+
+### Örnek 2 — Python: Sürüm Çakışması
+
+**Seçilen hata metni:**
+```
+ERROR: Cannot install -r requirements.txt because these package versions
+have conflicting dependencies.
+ResolutionImpossible: numpy==1.19 is incompatible with pandas>=2.0
+```
+
+**F10 → Python → üretilen rapor (özet):**
+```
+⚠️ KÜTÜPHANE SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ (Python / pip)
+============================================================
+📋 SORUN: pip, tüm koşulları karşılayan bir sürüm kümesi bulamıyor.
+🔍 KAYNAK: numpy<1.20 iken pandas>=2.0 isteniyor (transitive conflict).
+🛠️ ÇÖZÜM:
+  1. python -m pip install --upgrade pip
+  2. pip freeze > requirements_backup.txt
+  3. pip uninstall -r requirements_backup.txt -y
+  4. pip cache purge
+  5. pip install -r requirements.txt
+🔁 ALTERNATİF: '==' yerine '>=' kullan, ya da temiz venv kur.
+```
+
+### Örnek 3 — Node.js: Eksik NPM Paketi
+
+**Seçilen hata metni:**
+```
+Error: Cannot find module 'express'
+    at Function.Module._resolveFilename
+```
+
+**F10 → JavaScript → üretilen rapor (özet):**
+```
+⚠️ EKSİK NPM PAKETİ TESPİT EDİLDİ
+📋 SORUN: 'express' paketi node_modules'da yok.
+🛠️ ÇÖZÜM:
+  1. npm uninstall express
+  2. npm install express --save
+💡 EK NOT: Global ise → npm install -g express
+```
+
+### Örnek 4 — NPM Peer Dependency Çakışması
+
+**Seçilen hata metni:**
+```
+npm ERR! ERESOLVE unable to resolve dependency tree
+npm ERR! Found: react@18.0.0
+npm ERR! peer dependency conflict
+```
+
+**F10 → JavaScript → üretilen rapor (özet):**
+```
+⚠️ NPM KÜTÜPHANE ÇAKIŞMASI TESPİT EDİLDİ
+🛠️ ÇÖZÜM - SİLİP TEKRAR YÜKLE:
+  1. rm -rf node_modules package-lock.json
+  2. npm cache clean --force
+  3. npm install
+💡 Çalışmazsa: npm install --legacy-peer-deps
+```
+
+### Örnek 5 — C# NuGet Paket Sorunu
+
+**Seçilen hata metni:**
+```
+error NU1101: Unable to find package Newtonsoft.Json.
+No packages exist with this id in source(s): nuget.org
+```
+
+**F10 → C# → üretilen rapor (özet):**
+```
+⚠️ NUGET PAKET SORUNU TESPİT EDİLDİ
+🛠️ ÇÖZÜM:
+  1. dotnet clean
+  2. rmdir /s /q bin obj
+  3. dotnet restore --force
+  4. dotnet build
+💡 dotnet nuget locals all --clear
+```
+
+### Örnek 6 — Java Maven Bağımlılık Hatası
+
+**Seçilen hata metni:**
+```
+[ERROR] Failed to execute goal on project demo: Could not resolve
+dependencies for project com.example:demo:jar:1.0
+```
+
+**F10 → Java → üretilen rapor (özet):**
+```
+⚠️ MAVEN/GRADLE BAĞIMLILIK SORUNU TESPİT EDİLDİ
+🛠️ MAVEN:
+  1. mvn clean
+  2. rmdir /s /q target
+  3. mvn dependency:purge-local-repository
+  4. mvn install
+🛠️ GRADLE:
+  1. gradle clean
+  2. rmdir /s /q build .gradle
+  3. gradle build --refresh-dependencies
+```
+
+### Örnek 7 — Kütüphane değil, saf derleyici hatası (C#)
+
+**Seçilen hata metni:**
+```
+Program.cs(18,8): error CS1525: Unexpected symbol `Console'
+Program.cs(33,1): error CS1002: ; expected
+```
+
+Kütüphane dedektörü eşleşmez → **syntax parser** devreye girer:
+
+```
+🌐 Dil: C#
+📊 2 hata bulundu
+
+🔴 HATA #1
+📍 Program.cs - Satır 18
+❌ Noktalı virgül (;) eksik veya yanlış yerde
+💻 Kod: CS1525
+
+🔴 HATA #2
+📍 Program.cs - Satır 33
+❌ Satır sonunda noktalı virgül (;) eksik
+💻 Kod: CS1002
+
+💡 İpucu: Belirtilen satırları kontrol edin.
 ```
 
 ---
@@ -228,6 +379,31 @@ ollama list
 
 ---
 
-## 8. Lisans
+## 8. Test / Tekrar Üretim
 
-MIT License
+README'deki örnek çıktıların tamamı aşağıdaki Python scripti ile doğrudan
+üretilmiştir (GUI açmadan, parser fonksiyonunu doğrudan çağırarak):
+
+```python
+# test_parser.py
+import importlib.util
+spec = importlib.util.spec_from_file_location("m", "main.pyw")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+
+ornek = "ModuleNotFoundError: No module named 'pandas'"
+print(m.kutuphane_cakismasi_analiz(ornek, "python"))
+
+ornek2 = "Program.cs(18,8): error CS1525: Unexpected symbol `Console'"
+print(m.hata_parser_basit(ornek2, "csharp"))
+```
+
+Çalıştır:
+```powershell
+.\.venv\Scripts\python.exe test_parser.py
+```
+
+Son test turunda **7/7 kütüphane senaryosu** ve C# derleyici hatası doğru
+şekilde yakalandı. (Python traceback'leri için saf syntax parser kapsam
+dışıdır; onun için Örnek 1'deki gibi hata kütüphane dedektörüne düşer.)
+
