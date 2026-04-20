@@ -279,6 +279,59 @@ def gemini_cevap_al(prompt):
         return None
 
 
+def kutuphane_cakismasi_kontrol(hata_metni, dil_kodu):
+    """Hata metninde kütüphane çakışması, eski sürüm veya eksik modül arar ve rapor üretir."""
+    metin = hata_metni.lower()
+    
+    # 1. Sürüm çakışmaları (Version conflicts, peer dependencies)
+    if 'version conflict' in metin or 'eresolve' in metin or 'peer dependency' in metin or 'incompatible' in metin or 'requires version' in metin:
+        rapor = (
+            "⚠️ KÜTÜPHANE/SÜRÜM ÇAKIŞMASI TESPİT EDİLDİ\n"
+            "------------------------------------------\n"
+            "Hata Kaynağı: Projedeki kütüphanelerin birbirleriyle veya sistemle sürüm uyumsuzluğu var.\n\n"
+            "🛠️ ÇÖZÜM ÖNERİSİ:\n"
+            "Mevcut kütüphane kurulumlarında bir çakışma (eski sürüm kullanımı vb.) söz konusu.\n"
+        )
+        if dil_kodu == "python":
+            rapor += "Lütfen terminalde çakışan paketi silip temiz bir kurulum yapın:\n"
+            rapor += "1. pip uninstall [paket_adi]\n"
+            rapor += "2. pip install [paket_adi] --upgrade\n"
+            rapor += "(Eğer sorun çok paketliyse: pip freeze > req.txt yapıp sanal ortamı baştan kurun.)"
+        elif dil_kodu in ["javascript", "typescript"]:
+            rapor += "Lütfen npm/yarn önbelleğini temizleyip yeniden yükleme yapın:\n"
+            rapor += "1. rm -rf node_modules package-lock.json\n"
+            rapor += "2. npm cache clean --force\n"
+            rapor += "3. npm install\n"
+            rapor += "(Eğer spesifik bir paket hatasıysa 'npm install [paket_adi]@latest' deneyin.)"
+        else:
+            rapor += "Lütfen projenin bağımlılık yönetim aracını kullanarak hatalı paketi silip güncel sürümünü yeniden yükleyin."
+        return rapor
+
+    # 2. Modül/Kütüphane Bulunamadı (Missing packages, import errors)
+    if 'modulenotfounderror' in metin or 'importerror' in metin or 'cannot find module' in metin or 'no module named' in metin or 'error cs0246' in metin:
+        rapor = (
+            "⚠️ EKSİK KÜTÜPHANE TESPİT EDİLDİ\n"
+            "--------------------------------\n"
+            "Hata Kaynağı: Kodda çağrılan bir kütüphane veya paket sistemde kurulu değil (veya yolda bulunamıyor).\n\n"
+            "🛠️ ÇÖZÜM ÖNERİSİ:\n"
+            "Eksik paketi yüklemeniz gerekiyor.\n"
+        )
+        if dil_kodu == "python":
+            rapor += "Terminalde şu komutla paketi kurun:\n"
+            rapor += "pip install [paket_adi]\n"
+            rapor += "(Eğer kuruluysa sanal ortamın aktif olduğundan emin olun.)"
+        elif dil_kodu in ["javascript", "typescript"]:
+            rapor += "Terminalde şu komutla paketi kurun:\n"
+            rapor += "npm install [paket_adi]\n"
+        elif dil_kodu == "csharp":
+            rapor += "NuGet Paket Yöneticisi üzerinden eksik kütüphaneyi projeye dahil edin:\n"
+            rapor += "dotnet add package [paket_adi]"
+        else:
+            rapor += "Dilinize uygun paket yöneticisi ile eksik kütüphaneyi indirip kurun."
+        return rapor
+
+    return None
+
 def hata_parser_basit(hata_metni, dil_kodu):
     """Basit regex/string parsing ile hata analizi yapar."""
     sonuclar = []
@@ -337,7 +390,7 @@ def hata_aciklama_bul(hata_kodu, hata_mesaji, dil_kodu):
 
 
 def hata_analiz_et(secili_metin, dil_kodu, kullan_cloud=False):
-    """Basit parser ile hata analizi - hızlı ve doğrudan."""
+    """Basit parser ve çakışma analizi ile hata raporlama."""
     
     dil_isimleri = {
         "python": "Python",
@@ -353,13 +406,22 @@ def hata_analiz_et(secili_metin, dil_kodu, kullan_cloud=False):
     }
     dil_adi = dil_isimleri.get(dil_kodu, dil_kodu)
     
-    # Basit parser çalıştır
+    # 1. Aşama: Kütüphane / Sürüm / Bağımlılık Çakışması Kontrolü
+    cakisma_raporu = kutuphane_cakismasi_kontrol(secili_metin, dil_kodu)
+    
+    if cakisma_raporu:
+        cikti = f"🌐 Dil: {dil_adi}\n\n{cakisma_raporu}"
+        gui_queue.put((sonuc_penceresi_goster, (f"🐞 {dil_adi} Kritik Hata Raporu", cikti)))
+        print(f"✅ {dil_adi} kritik hata analizi tamamlandı.")
+        return
+
+    # 2. Aşama: Basit Syntax Parser çalıştır
     hatalar = hata_parser_basit(secili_metin, dil_kodu)
     
     if not hatalar:
         # Parser bulamadıysa basit mesaj göster
         cikti = f"🌐 Dil: {dil_adi}\n\n"
-        cikti += "⚠️ Hata formatı tanınamadı.\n"
+        cikti += "⚠️ Hata formatı tanınamadı veya kritik bir bağımlılık sorunu bulunamadı.\n"
         cikti += "📝 Seçili metin:\n"
         cikti += secili_metin[:200] + "..." if len(secili_metin) > 200 else secili_metin
     else:
@@ -373,7 +435,7 @@ def hata_analiz_et(secili_metin, dil_kodu, kullan_cloud=False):
             cikti += f"❌ {hata['aciklama']}\n"
             cikti += f"💻 Kod: {hata['hata_kodu']}\n\n"
     
-    cikti += "\n💡 İpucu: Belirtilen satırları kontrol edin."
+        cikti += "\n💡 İpucu: Belirtilen satırları kontrol edin."
     
     gui_queue.put((sonuc_penceresi_goster, (f"🐞 {dil_adi} Hata Analizi", cikti)))
     print(f"✅ {dil_adi} hata analizi tamamlandı.")
