@@ -376,8 +376,18 @@ dosya.cs(18,8): error CS1525: Unexpected symbol `Console'
 ```
 
 → `dosya`, `satır`, `kolon`, `hata_kodu`, `mesaj` ayrıştırılır → `HATA_SOZLUKLERI`
-üzerinden Türkçe açıklama aranır (örn. `CS1525` → "Noktalı virgül eksik veya
-yanlış yerde").
+üzerinden Türkçe açıklama aranır.
+
+**Sözlük kapsamı (toplam 210 kayıt):**
+
+| Dil | Kayıt | Örnek kodlar / kalıplar |
+|---|---:|---|
+| C# | 49 | CS1002, CS0103, CS1503, CS7036, CS0535, CS4033, CS0266... |
+| Python | 48 | SyntaxError, ModuleNotFoundError, RecursionError, JSONDecodeError, UnboundLocalError... |
+| Java | 34 | NullPointerException, ClassNotFoundException, `cannot find symbol`, `incompatible types`... |
+| TypeScript | 29 | TS2304, TS2307, TS2322, TS2531, TS7006, TS6133... |
+| JavaScript | 26 | TypeError, `Cannot read properties of undefined`, EADDRINUSE, ECONNREFUSED, ENOENT... |
+| C/C++ | 24 | `undefined reference`, `no matching function`, `segmentation fault`, `incomplete type`... |
 
 ### 5.3 AI Modelleri
 
